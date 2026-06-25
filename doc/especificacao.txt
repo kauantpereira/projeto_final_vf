@@ -1,0 +1,230 @@
+================================================================================
+     ESPECIFICAÇÃO DO ÁRBITRO DE MEMÓRIA DUAL-PORT (Dual-Port Memory Arbiter)
+================================================================================
+
+1. VISÃO GERAL
+================================================================================
+
+O Dual-Port Memory Arbiter é um módulo que permite que dois mestres
+(Master A e Master B) compartilhem uma única interface de memória.
+Cada mestre possui sua própria porta de requisição e resposta, e o
+controlador decide qual mestre acessa a memória a cada momento usando
+uma política de arbitragem round-robin.
+
+O design garante:
+  - Exclusão mútua: apenas um mestre acessa a memória por vez
+  - Justiça (fairness): ambos os mestres são atendidos alternadamente
+  - Integridade: cada resposta é enviada ao mestre que originou a requisição
+  - Robustez: timeout e tratamento de erros de memória
+
+Módulos:
+  - sync_fifo   : FIFO síncrona parametrizável (profundidade e largura)
+  - mem_arbiter : Controlador principal com arbitragem, FSM, e roteamento
+
+
+2. DESCRIÇÃO DAS INTERFACES
+================================================================================
+
+2.1 Interfaces de Requisição (Portas A e B)
+--------------------------------------------------------------------------------
+Ambas as portas possuem a mesma estrutura. Na tabela abaixo, substitua
+"x" por "a" para porta A ou "b" para porta B.
+
+  Sinal           Direção    Largura    Descrição
+  -----           -------    -------    ---------
+  x_req_valid     Entrada    1 bit      Mestre indica requisição válida
+  x_req_ready     Saída      1 bit      Controlador pode aceitar
+  x_req_addr      Entrada    3 bits     Endereço da transação
+  x_req_wdata     Entrada    8 bits     Dado de escrita
+  x_req_wr        Entrada    1 bit      1 = escrita, 0 = leitura
+
+2.2 Interfaces de Resposta (Portas A e B)
+--------------------------------------------------------------------------------
+  Sinal           Direção    Largura    Descrição
+  -----           -------    -------    ---------
+  x_resp_valid    Saída      1 bit      Resposta disponível
+  x_resp_ready    Entrada    1 bit      Mestre pronto para receber
+  x_resp_rdata    Saída      8 bits     Dado de leitura
+  x_resp_err      Saída      1 bit      Indicador de erro
+
+2.3 Interface de Memória
+--------------------------------------------------------------------------------
+  Sinal           Direção    Largura    Descrição
+  -----           -------    -------    ---------
+  mem_req         Saída      1 bit      Requisição à memória
+  mem_addr        Saída      3 bits     Endereço de memória
+  mem_wdata       Saída      8 bits     Dado de escrita para memória
+  mem_wr          Saída      1 bit      1 = escrita, 0 = leitura
+  mem_rdata       Entrada    8 bits     Dado de leitura da memória
+  mem_ack         Entrada    1 bit      Memória reconhece a transação
+  mem_err         Entrada    1 bit      Memória indica erro (só com mem_ack)
+
+2.4 Sinais de Status
+--------------------------------------------------------------------------------
+  Sinal           Direção    Largura    Descrição
+  -----           -------    -------    ---------
+  busy            Saída      1 bit      Controlador está processando
+  active_port     Saída      1 bit      Porta sendo atendida (0=A, 1=B)
+  err_count       Saída      8 bits     Contador de erros acumulados
+
+
+3. FIFOs DE REQUISIÇÃO
+================================================================================
+
+Cada porta possui uma FIFO síncrona independente para armazenar
+requisições pendentes.
+
+  - Profundidade padrão: 4 entradas (parâmetro FIFO_DEPTH)
+  - As FIFOs das portas A e B são completamente independentes
+  - Cada FIFO aceita requisições do seu mestre desde que não esteja cheia
+  - Escrita protegida: tentativa de escrita com FIFO cheia não tem efeito
+
+
+4. ARBITRAGEM ROUND-ROBIN
+================================================================================
+
+O controlador utiliza uma política de arbitragem round-robin para decidir
+qual porta acessa a memória quando ambas têm requisições pendentes.
+
+Registrador de prioridade: rr_priority (1 bit)
+  - rr_priority = 0 → Porta A tem prioridade
+  - rr_priority = 1 → Porta B tem prioridade
+
+Regras de seleção (avaliadas quando a FSM está em S_IDLE):
+
+  Caso 1: Apenas porta A tem requisição → seleciona A
+  Caso 2: Apenas porta B tem requisição → seleciona B
+  Caso 3: Ambas têm requisição → seleciona conforme rr_priority
+  Caso 4: Nenhuma tem requisição → permanece ocioso
+
+Atualização da prioridade:
+  Após CADA transação completada (quando a resposta é entregue ao mestre),
+  o rr_priority DEVE alternar para a porta OPOSTA à que foi atendida.
+  Isso garante que, havendo contenção contínua, as portas sejam atendidas
+  alternadamente: A, B, A, B, ...
+
+  Exemplo:
+    - Se porta A foi atendida → rr_priority recebe 1 (próxima: B)
+    - Se porta B foi atendida → rr_priority recebe 0 (próxima: A)
+
+
+5. MÁQUINA DE ESTADOS (FSM)
+================================================================================
+
+O controlador é governado por uma FSM com os seguintes estados:
+
+  S_IDLE (0)     - Ocioso, avaliando arbitragem
+  S_MEM_REQ (1)  - Emitindo requisição à memória
+  S_WAIT_ACK (2) - Aguardando reconhecimento da memória
+  S_RESP (3)     - Enviando resposta ao mestre que originou a requisição
+  S_ERROR (4)    - Tratamento de condição de erro
+
+Transições:
+
+  S_IDLE → S_MEM_REQ:
+    Quando pelo menos uma FIFO não está vazia. A porta vencedora é
+    determinada pela lógica de arbitragem. Os dados da requisição são
+    lidos da FIFO da porta vencedora e registrados internamente.
+    O registrador txn_port registra qual porta foi selecionada.
+
+  S_MEM_REQ → S_WAIT_ACK:
+    Incondicional. mem_req é ativado com endereço e dados válidos.
+
+  S_WAIT_ACK → S_RESP:
+    Quando mem_ack é recebido sem erro (mem_err = 0).
+
+  S_WAIT_ACK → S_ERROR:
+    Quando ocorre timeout (sem mem_ack dentro do limite) OU quando
+    mem_ack é recebido COM mem_err = 1.
+
+  S_RESP → S_IDLE:
+    Quando o handshake de resposta é completado (resp_valid && resp_ready
+    na porta correspondente). O rr_priority é atualizado nesta transição.
+
+  S_ERROR → S_RESP:
+    Incondicional. O flag de erro da transação é ativado.
+
+A resposta é enviada EXCLUSIVAMENTE à porta que originou a requisição.
+A outra porta NÃO recebe resp_valid.
+
+
+6. TIMEOUT E ERROS
+================================================================================
+
+Timeout:
+  O controlador possui um mecanismo de timeout configurável pelo
+  parâmetro TIMEOUT_CYCLES (padrão: 8). Se nenhum mem_ack é recebido
+  dentro desse limite de ciclos, o controlador transiciona para S_ERROR.
+
+Erros de memória:
+  Quando mem_ack chega junto com mem_err = 1, o controlador DEVE
+  transicionar para S_ERROR e gerar resposta com resp_err = 1.
+
+  O registrador err_count incrementa em 1 para cada mem_err recebido.
+
+Em ambos os casos (timeout ou erro), o fluxo é:
+  S_WAIT_ACK → S_ERROR → S_RESP → S_IDLE
+
+
+7. PROTOCOLO VALID/READY
+================================================================================
+
+Todas as interfaces de requisição e resposta seguem o protocolo
+valid/ready:
+
+  1. A transferência ocorre no ciclo em que AMBOS valid E ready
+     estão ativos simultaneamente.
+
+  2. Para req_ready (portas A e B):
+     - DEVE ser 0 quando a respectiva FIFO está cheia
+     - DEVE ser 1 quando a respectiva FIFO tem espaço
+     - A relação DEVE ser IMEDIATA (combinacional), não atrasada
+
+
+8. PROPRIEDADES GARANTIDAS DO DESIGN
+================================================================================
+
+As seguintes propriedades devem ser verdadeiras para o design correto.
+Elas estão divididas em dois grupos:
+
+  Grupo A (pré-escritas no testbench): Já estão implementadas como
+  assertions em tb_mem_arbiter.sv.
+
+  Grupo B (a serem escritas pelo aluno): O aluno deve implementá-las.
+
+
+GRUPO A - ASSERTIONS PRÉ-ESCRITAS
+--------------------------------------------------------------------------------
+
+A1. CONTROLE DE FLUXO: req_ready de cada porta DEVE ser 0 quando a
+    respectiva FIFO está cheia. A relação deve ser IMEDIATA.
+
+A2. ARBITRAGEM JUSTA: Após completar uma transação de uma porta,
+    rr_priority DEVE alternar para favorecer a porta OPOSTA.
+    Exemplo: se porta A foi atendida, rr_priority deve receber 1.
+
+A3. TRATAMENTO DE ERRO: Quando a memória retorna erro (mem_ack com
+    mem_err), a FSM DEVE transicionar para S_ERROR no próximo ciclo.
+
+
+GRUPO B - ASSERTIONS DO ALUNO
+--------------------------------------------------------------------------------
+
+B1. SINAL BUSY: busy DEVE ser 1 sempre que o controlador NÃO está
+    em S_IDLE, e 0 quando está em S_IDLE.
+
+B2. EXCLUSÃO MÚTUA: a_resp_valid e b_resp_valid NUNCA podem estar
+    ambos ativos ao mesmo tempo.
+
+B3. ESTADOS VÁLIDOS: A FSM DEVE estar em um estado válido
+    (S_IDLE, S_MEM_REQ, S_WAIT_ACK, S_RESP, ou S_ERROR) a cada
+    ciclo de clock.
+
+B4. PERSISTÊNCIA DE RESPOSTA: resp_valid DEVE permanecer ativo até
+    que resp_ready complete o handshake. Se resp_valid está alto e
+    resp_ready está baixo, resp_valid deve continuar alto no próximo
+    ciclo.
+
+================================================================================
+                          FIM DA ESPECIFICAÇÃO
+================================================================================
