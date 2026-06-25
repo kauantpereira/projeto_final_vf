@@ -165,19 +165,31 @@ module tb_mem_arbiter;
     // Verifique que o sinal 'busy' é 1 quando a FSM NÃO está em
     // S_IDLE, e 0 quando está em S_IDLE.
 
-    // B1_sinal_busy: assert property (@(posedge clk) ... );
+	B1_sinal_busy: assert property (@(posedge clk)
+	    (dut.state != dut.S_IDLE) |=> (dut.busy == 1'b1) and
+	    (dut.state == dut.S_IDLE) |=> (dut.busy == 1'b0)
+	);
 
     // --- B2: Exclusão Mútua de Respostas ---
     // Verifique que a_resp_valid e b_resp_valid NUNCA estão ambos
     // ativos ao mesmo tempo.
 
-    // B2_exclusao_mutua: assert property (@(posedge clk) ... );
+
+    B2_exclusao_mutua: assert property (@(posedge clk) 
+    	!(a_resp_valid && b_resp_valid)
+    );
 
     // --- B3: Estados Válidos ---
     // Verifique que a FSM está sempre em um estado válido
     // (S_IDLE, S_MEM_REQ, S_WAIT_ACK, S_RESP, ou S_ERROR).
 
-    // B3_estados_validos: assert property (@(posedge clk) ... );
+    B3_estados_validos: assert property (@(posedge clk) 
+    	(dut.state == dut.S_IDLE ||
+    	dut.state == dut.S_MEM_REQ ||
+    	dut.state == dut.S_WAIT_ACK ||
+    	dut.state == dut.S_RESP ||
+    	dut.state == dut.S_ERROR)
+    );
 
     // --- B4: Persistência de Resposta ---
     // Verifique que, uma vez que a_resp_valid sobe, ele permanece
@@ -185,8 +197,11 @@ module tb_mem_arbiter;
     // Em outras palavras: se a_resp_valid=1 e a_resp_ready=0,
     // então no próximo ciclo a_resp_valid ainda deve ser 1.
     // Dica: use o operador |=>
-    //
-    // B4_persistencia_resp: assert property (@(posedge clk) ... );
+
+    B4_persistencia_resp: assert property (@(posedge clk)
+    	(a_resp_valid && !a_resp_ready)
+    	|=> (a_resp_valid)
+    );
 
     // ================================================================
     // ASSERTIONS DE REGRESSÃO (Tarefa 4)

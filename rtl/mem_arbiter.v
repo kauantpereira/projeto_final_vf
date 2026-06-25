@@ -121,19 +121,8 @@ module mem_arbiter #(
     // ----------------------------------------------------------------
     // req_ready Generation
     // ----------------------------------------------------------------
-    reg a_req_ready_r, b_req_ready_r;
-
-    always @(posedge clk or negedge rst_n)
-        if (!rst_n) begin
-            a_req_ready_r <= 1'b1;
-            b_req_ready_r <= 1'b1;
-        end else begin
-            a_req_ready_r <= ~fifo_a_full;
-            b_req_ready_r <= ~fifo_b_full;
-        end
-
-    assign a_req_ready = a_req_ready_r;
-    assign b_req_ready = b_req_ready_r;
+    assign a_req_ready = rst_n ? ~fifo_a_full : 1'b1;
+    assign b_req_ready = rst_n ? ~fifo_b_full : 1'b1;
 
     // ----------------------------------------------------------------
     // Arbitration Logic
@@ -184,7 +173,7 @@ module mem_arbiter #(
                     state_nxt = S_ERROR;
                 else if (mem_ack) begin
                     if (mem_err)
-                        state_nxt = S_IDLE;
+                        state_nxt = S_ERROR;
                     else
                         state_nxt = S_RESP;
                 end
@@ -275,7 +264,7 @@ module mem_arbiter #(
                             b_resp_valid <= 1'b0;
                     end
                     if (resp_valid_mux && resp_ready_mux)
-                        rr_priority <= txn_port;
+                        rr_priority <= ~txn_port;
                 end
 
                 S_ERROR: begin
