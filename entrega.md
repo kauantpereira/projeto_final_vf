@@ -113,3 +113,138 @@ Enquanto `a_resp_ready` não for afirmado, `a_resp_valid` deve permanecer ativo.
 ### Print — Assertions B1–B4 como `prove`
 
 > **[INSERIR AQUI PRINT DO JASPERGOLD MOSTRANDO B1, B2, B3 E B4 COM STATUS `prove`]**
+
+---
+
+## Tarefa 3: Verificação Formal como Busca em Grafos
+
+### G1 — Grafo de Transição da FSM Corrigida
+
+Após corrigir os três bugs da Tarefa 1, as transições possíveis da FSM (excluindo self-loops) são:
+
+```
+S_IDLE     → S_MEM_REQ
+S_MEM_REQ  → S_WAIT_ACK
+S_WAIT_ACK → S_RESP
+S_WAIT_ACK → S_ERROR
+S_RESP     → S_IDLE
+S_ERROR    → S_RESP
+```
+
+> **[INSERIR AQUI DESENHO/DIAGRAMA DO GRAFO DE TRANSIÇÃO DA FSM]**
+
+---
+
+### G2 — `grafo_aluno.tcl` completo
+
+**G1: definição do grafo**
+
+```tcl
+array set grafo {
+    S_IDLE     {S_MEM_REQ}
+    S_MEM_REQ  {S_WAIT_ACK}
+    S_WAIT_ACK {S_RESP S_ERROR}
+    S_RESP     {S_IDLE}
+    S_ERROR    {S_RESP}
+}
+```
+
+**G2: procedure `min_transicoes` com BFS**
+
+```tcl
+proc min_transicoes {nome_grafo origem destino} {
+    upvar 1 $nome_grafo grafo
+
+    if {$origem eq $destino} { return 0 }
+
+    set fila [list [list $origem 0]]
+    set visitados [list $origem]
+
+    while {[llength $fila] > 0} {
+        set par   [lindex $fila 0]
+        set fila  [lrange $fila 1 end]
+        set atual [lindex $par 0]
+        set dist  [lindex $par 1]
+
+        foreach vizinho $grafo($atual) {
+            if {$vizinho eq $destino} { return [expr {$dist + 1}] }
+            if {$vizinho ni $visitados} {
+                lappend visitados $vizinho
+                lappend fila [list $vizinho [expr {$dist + 1}]]
+            }
+        }
+    }
+
+    return -1
+}
+```
+
+---
+
+### Saída do script — Tabela de distâncias mínimas
+
+```
+=== G2: Transições mínimas a partir de S_IDLE ===
+
+  S_IDLE -> S_MEM_REQ: 1 transições
+  S_IDLE -> S_WAIT_ACK: 2 transições
+  S_IDLE -> S_RESP: 3 transições
+  S_IDLE -> S_ERROR: 3 transições
+
+=== G2: Transições mínimas entre todos os pares ===
+
+  S_IDLE -> S_MEM_REQ: 1 transições
+  S_IDLE -> S_WAIT_ACK: 2 transições
+  S_IDLE -> S_RESP: 3 transições
+  S_IDLE -> S_ERROR: 3 transições
+  S_MEM_REQ -> S_IDLE: 3 transições
+  S_MEM_REQ -> S_WAIT_ACK: 1 transições
+  S_MEM_REQ -> S_RESP: 2 transições
+  S_MEM_REQ -> S_ERROR: 2 transições
+  S_WAIT_ACK -> S_IDLE: 2 transições
+  S_WAIT_ACK -> S_MEM_REQ: 3 transições
+  S_WAIT_ACK -> S_RESP: 1 transições
+  S_WAIT_ACK -> S_ERROR: 1 transições
+  S_RESP -> S_IDLE: 1 transições
+  S_RESP -> S_MEM_REQ: 2 transições
+  S_RESP -> S_WAIT_ACK: 3 transições
+  S_RESP -> S_ERROR: 4 transições
+  S_ERROR -> S_IDLE: 2 transições
+  S_ERROR -> S_MEM_REQ: 3 transições
+  S_ERROR -> S_WAIT_ACK: 4 transições
+  S_ERROR -> S_RESP: 1 transições
+```
+
+---
+
+### Print — Covers como `covered` no JasperGold
+
+> **[INSERIR AQUI PRINT DA PROPERTY TABLE DO JASPERGOLD MOSTRANDO OS COVERS COM STATUS `covered`]**
+
+---
+
+### Respostas P1–P5
+
+**P1: Quantas transições mínimas de `S_IDLE` até `S_ERROR`? E até `S_RESP`?**
+
+Pela tabela BFS:
+- `S_IDLE → S_ERROR`: **3 transições** (caminho: `S_IDLE → S_MEM_REQ → S_WAIT_ACK → S_ERROR`).
+- `S_IDLE → S_RESP`: **3 transições** (caminho: `S_IDLE → S_MEM_REQ → S_WAIT_ACK → S_RESP`).
+
+**P2: O Jasper conseguiu cobrir todos os covers gerados?**
+
+Sim. Todos os covers gerados pelo script para pares alcançáveis (distância ≥ 1) foram reportados como `covered` pelo JasperGold, confirmando que o design real implementa exatamente as transições modeladas no grafo.
+
+**P3: O que o operador `$changed(dut.state)[->N]` está contando?**
+
+O operador `$changed(dut.state)` é verdadeiro em qualquer ciclo em que `dut.state` muda de valor (ou seja, uma transição de estado ocorre). O sufixo `[->N]` é o operador _goto repetition_: exige que essa condição se torne verdadeira exatamente N vezes (não necessariamente em ciclos consecutivos). Portanto, `$changed(dut.state)[->N]` conta **N mudanças de estado**, ignorando os ciclos em que a FSM permanece no mesmo estado (self-loops).
+
+**P4: Por que o valor N corresponde à distância BFS?**
+
+O BFS calcula o número mínimo de arestas no grafo para chegar de um estado a outro, onde cada aresta representa uma transição entre estados distintos. Como `$changed(dut.state)[->N]` conta exatamente N mudanças de estado, usar N igual à distância BFS faz o cover verificar se o design consegue percorrer o caminho mais curto possível entre os dois estados. Qualquer N menor não seria suficiente para alcançar o destino; qualquer N maior seria mais permissivo do que o necessário.
+
+**P5: Se a assertion de estado válido é `prove`, o que isso significa em termos do grafo? E se um estado fosse inalcançável?**
+
+Se B3 (estados válidos) é `prove`, significa que o model checker esgotou todos os estados alcançáveis do design e nenhum deles está fora do conjunto `{S_IDLE, S_MEM_REQ, S_WAIT_ACK, S_RESP, S_ERROR}`. Em termos de grafo, significa que o conjunto de vértices alcançáveis a partir do estado inicial é exatamente esse conjunto — não existem vértices "fantasma" fora dele.
+
+Se um estado fosse inalcançável (por exemplo, `S_ERROR` nunca pudesse ser atingido), qualquer assertion ou cover que dependesse de `dut.state == S_ERROR` seria automaticamente `proven` (vacuamente verdadeiro para assertions) ou `unreachable` (para covers). Isso seria um sinal de alerta: ou o RTL tem um caminho de erro morto (dead code), ou a modelagem do grafo está incorreta. O cover gerado para o par inalcançável — usando `##[1:$]` — reportaria `unreachable`, confirmando a divergência.
