@@ -139,8 +139,6 @@ S_RESP     → S_IDLE
 S_ERROR    → S_RESP
 ```
 
-*Desenho do grafo de transição da FSM corrigida.*
-
 ```mermaid
 stateDiagram-v2
     S_IDLE --> S_MEM_REQ
@@ -150,6 +148,8 @@ stateDiagram-v2
     S_RESP --> S_IDLE
     S_ERROR --> S_RESP
 ```
+
+*Desenho do grafo de transição da FSM corrigida.*
 
 ---
 
