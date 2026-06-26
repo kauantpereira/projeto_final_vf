@@ -143,6 +143,16 @@ S_ERROR    → S_RESP
 
 *Desenho do grafo de transição da FSM corrigida.*
 
+```mermaid
+stateDiagram-v2
+    S_IDLE --> S_MEM_REQ
+    S_MEM_REQ --> S_WAIT_ACK
+    S_WAIT_ACK --> S_RESP
+    S_WAIT_ACK --> S_ERROR
+    S_RESP --> S_IDLE
+    S_ERROR --> S_RESP
+```
+
 ---
 
 ### G2 — `grafo_aluno.tcl` completo
