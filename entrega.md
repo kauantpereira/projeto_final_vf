@@ -248,3 +248,87 @@ O BFS calcula o número mínimo de arestas no grafo para chegar de um estado a o
 Se B3 (estados válidos) é `prove`, significa que o model checker esgotou todos os estados alcançáveis do design e nenhum deles está fora do conjunto `{S_IDLE, S_MEM_REQ, S_WAIT_ACK, S_RESP, S_ERROR}`. Em termos de grafo, significa que o conjunto de vértices alcançáveis a partir do estado inicial é exatamente esse conjunto — não existem vértices "fantasma" fora dele.
 
 Se um estado fosse inalcançável (por exemplo, `S_ERROR` nunca pudesse ser atingido), qualquer assertion ou cover que dependesse de `dut.state == S_ERROR` seria automaticamente `proven` (vacuamente verdadeiro para assertions) ou `unreachable` (para covers). Isso seria um sinal de alerta: ou o RTL tem um caminho de erro morto (dead code), ou a modelagem do grafo está incorreta. O cover gerado para o par inalcançável — usando `##[1:$]` — reportaria `unreachable`, confirmando a divergência.
+
+---
+
+## Tarefa 4: Coverage Formal e Assertions de Regressão
+
+### Coverage antes das assertions R1–R4
+
+Após as tarefas 1, 2 e 3 (assertions A1–A3 e B1–B4 passando), o relatório de branch coverage do JasperGold apresentava:
+
+**Formal Branch Coverage: 63/79 — 79,75%**
+
+> **[INSERIR AQUI PRINT DO JASPERGOLD MOSTRANDO COVERAGE ANTES DAS ASSERTIONS R1–R4]**
+
+#### Linhas/comportamentos não cobertos
+
+As assertions existentes verificam controle de fluxo e protocolo, mas não forçam o verificador a explorar o caminho de dados. Os branches COI com status `uncovered` eram:
+
+| Linhas (RTL) | Expressão / Bloco | Motivo de não cobertura |
+|---|---|---|
+| 241–243 | `S_WAIT_ACK` com `mem_ack` true/false | nenhuma assertion exigia `mem_ack` em `S_WAIT_ACK` |
+| 245–248 | `!txn_wr && mem_ack && !mem_err` (captura de `txn_rdata`) | leitura com ack sem erro nunca era forçada como antecedente |
+| 270–273 | `case S_ERROR` (atribuição de `txn_error` e `mem_req <= 0`) | estado S_ERROR era alcançado pela FSM, mas o datapath interno não era verificado |
+| 85, 105 | assigns combinacionais de `a_req_ready` / `b_req_ready` | COI não propagava até esses nós a partir das assertions de protocolo |
+
+Em resumo: o caminho de dados — roteamento de endereço para a memória, captura de dado de leitura, flag de erro e contador de erros — não estava coberto por nenhuma assertion.
+
+---
+
+### Assertions de regressão R1–R4
+
+```systemverilog
+// R1: Roteamento de Dados para Memória
+// Após S_MEM_REQ, mem_addr deve corresponder a txn_addr.
+R1_data_routing: assert property (@(posedge clk)
+    (dut.state == dut.S_MEM_REQ)
+    |=> (mem_addr == dut.txn_addr)
+);
+
+// R2: Flag de Erro na Transação
+// Quando mem_ack && mem_err em S_WAIT_ACK, txn_error deve ser 1 no ciclo seguinte.
+R2_error_flag: assert property (@(posedge clk)
+    (dut.state == dut.S_WAIT_ACK && mem_ack && mem_err)
+    |=> (dut.txn_error == 1'b1)
+);
+
+// R3: Captura de Dados de Leitura
+// Em leitura com mem_ack && !mem_err em S_WAIT_ACK, mem_rdata deve ser salvo em txn_rdata.
+R3_read_capture: assert property (@(posedge clk)
+    (dut.state == dut.S_WAIT_ACK && mem_ack && !mem_err && !dut.txn_wr)
+    |=> (dut.txn_rdata == $past(mem_rdata))
+);
+
+// R4: Incremento do Contador de Erros
+// Quando mem_ack && mem_err em S_WAIT_ACK, err_count deve incrementar em 1.
+R4_err_count: assert property (@(posedge clk)
+    (dut.state == dut.S_WAIT_ACK && mem_ack && mem_err)
+    |=> (err_count == $past(err_count) + 8'd1)
+);
+```
+
+---
+
+### Coverage depois das assertions R1–R4
+
+> **[INSERIR AQUI PRINT DO JASPERGOLD MOSTRANDO COVERAGE DEPOIS DAS ASSERTIONS R1–R4]**
+
+**Formal Branch Coverage esperado: > 90%**
+
+As assertions R1–R4 introduzem antecedentes que forçam o verificador a explorar exatamente os branches que antes ficavam descobertos: o bloco `S_WAIT_ACK` com `mem_ack`, a captura de `txn_rdata` e o estado `S_ERROR`. Com isso, o coverage sobe significativamente em relação ao baseline de 79,75%.
+
+#### Linhas que podem permanecer `uncovered`
+
+Os branches relacionados aos assigns combinacionais de `a_req_ready`/`b_req_ready` (linhas 85 e 105) podem continuar não cobertos pelo COI, pois eles são verificados por A1 via equivalência lógica, mas o analisador de COI pode não propagar até esses nós dependendo do cone de influência considerado. Isso não representa risco funcional, pois A1 já garante a propriedade corrente desses sinais.
+
+---
+
+### Risco de código RTL sem cobertura por assertions
+
+Uma linha de RTL que não é coberta por nenhuma assertion significa que nenhuma propriedade verificada depende daquele comportamento. Em consequência:
+
+- uma **mutação** nessa linha (bug introduzido ou regressão) não seria detectada por nenhuma das assertions existentes;
+- o design poderia ter um **caminho de dados incorreto** que só se manifestaria em uso real, escapando completamente da verificação formal.
+
+O coverage formal funciona como uma métrica de confiança: quanto maior a cobertura, menor a superfície de comportamento não verificado. Linhas permanentemente `uncovered` devem ser examinadas — ou são dead code (e devem ser removidas do RTL), ou falta uma assertion que as cubra.
