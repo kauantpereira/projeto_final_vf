@@ -54,7 +54,9 @@ Isso inverte o bit, favorecendo a outra porta na próxima arbitração.
 
 ### Print — Assertions A1, A2 e A3 como `prove`
 
-> **[INSERIR AQUI PRINT DO JASPERGOLD MOSTRANDO A1, A2 E A3 COM STATUS `prove`]**
+![t1_assertions_abc_prove](assets/t1_assertions_abc_prove)
+
+*Mostrando todos os testes A passando.*
 
 ---
 
@@ -112,7 +114,13 @@ Enquanto `a_resp_ready` não for afirmado, `a_resp_valid` deve permanecer ativo.
 
 ### Print — Assertions B1–B4 como `prove`
 
-> **[INSERIR AQUI PRINT DO JASPERGOLD MOSTRANDO B1, B2, B3 E B4 COM STATUS `prove`]**
+![t2_assertions_b_prove](assets/t2_assertions_b_prove)
+
+*Mostrando todos os testes B passando.*
+
+![t2_instance_extra](assets/t2_instance_extra.png)
+
+*Print da instância no JasperGold — extra, após todos os outros prints.*
 
 ---
 
@@ -131,7 +139,9 @@ S_RESP     → S_IDLE
 S_ERROR    → S_RESP
 ```
 
-> **[INSERIR AQUI DESENHO/DIAGRAMA DO GRAFO DE TRANSIÇÃO DA FSM]**
+> **[INSERIR DIAGRAMA DO GRAFO DE TRANSIÇÃO DA FSM]**
+
+*Desenho do grafo de transição da FSM corrigida.*
 
 ---
 
@@ -219,7 +229,9 @@ proc min_transicoes {nome_grafo origem destino} {
 
 ### Print — Covers como `covered` no JasperGold
 
-> **[INSERIR AQUI PRINT DA PROPERTY TABLE DO JASPERGOLD MOSTRANDO OS COVERS COM STATUS `covered`]**
+![t3_property_table_covers](assets/t3_property_table_covers.png)
+
+*Property table mostrando todos os covers com status `covered`.*
 
 ---
 
@@ -259,7 +271,17 @@ Após as tarefas 1, 2 e 3 (assertions A1–A3 e B1–B4 passando), o relatório 
 
 **Formal Branch Coverage: 63/79 — 79,75%**
 
-> **[INSERIR AQUI PRINT DO JASPERGOLD MOSTRANDO COVERAGE ANTES DAS ASSERTIONS R1–R4]**
+![t4_coverage_before](assets/t4_coverage_before.png)
+
+*Coverage antes das assertions R1–R4 — visão geral.*
+
+![t4_coverage_before_detailed](assets/t4_coverage_before_detailed.png)
+
+*Coverage antes — tela de análise detalhada (sem item específico destacado).*
+
+![t4_coverage_before_failed_detail](assets/t4_coverage_before_failed_detail.png)
+
+*Coverage antes — detalhamento dos testes com falha (COI não cobertos).*
 
 #### Linhas/comportamentos não cobertos
 
@@ -312,7 +334,13 @@ R4_err_count: assert property (@(posedge clk)
 
 ### Coverage depois das assertions R1–R4
 
-> **[INSERIR AQUI PRINT DO JASPERGOLD MOSTRANDO COVERAGE DEPOIS DAS ASSERTIONS R1–R4]**
+![t4_coverage_after_coi100](assets/t4_coverage_after_coi100.png)
+
+*Coverage depois das assertions R1–R4 — COI Coverage = 100%.*
+
+![t4_coverage_after_details](assets/t4_coverage_after_details.png)
+
+*Coverage depois — visão detalhada.*
 
 **Formal Branch Coverage esperado: > 90%**
 
