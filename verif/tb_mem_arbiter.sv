@@ -220,28 +220,34 @@ module tb_mem_arbiter;
     // --- R1: Roteamento de Dados para Memória ---
     // Após o estado S_MEM_REQ, o endereço enviado à memória (mem_addr)
     // deve corresponder ao endereço da transação capturada (txn_addr).
-    //
-    // R1_data_routing: assert property (@(posedge clk) ... );
+    R1_data_routing: assert property (@(posedge clk)
+        (dut.state == dut.S_MEM_REQ)
+        |=> (mem_addr == dut.txn_addr)
+    );
 
     // --- R2: Flag de Erro na Transação ---
     // Quando a FSM está no estado S_ERROR, o flag txn_error deve ser
     // ativado (1) no ciclo seguinte.
-    //
-    // R2_error_flag: assert property (@(posedge clk) ... );
+    R2_error_flag: assert property (@(posedge clk)
+        (dut.state == dut.S_WAIT_ACK && mem_ack && mem_err)
+        |=> (dut.txn_error == 1'b1)
+    );
 
     // --- R3: Captura de Dados de Leitura ---
     // Quando uma transação de leitura (txn_wr=0) recebe mem_ack sem
     // erro no estado S_WAIT_ACK, o dado da memória (mem_rdata) deve
     // ser armazenado em txn_rdata no ciclo seguinte.
-    // Dica: use $past() para referenciar o valor do ciclo anterior.
-    //
-    // R3_read_capture: assert property (@(posedge clk) ... );
+    R3_read_capture: assert property (@(posedge clk)
+        (dut.state == dut.S_WAIT_ACK && mem_ack && !mem_err && !dut.txn_wr)
+        |=> (dut.txn_rdata == $past(mem_rdata))
+    );
 
     // --- R4: Incremento do Contador de Erros ---
     // Quando mem_ack chega com mem_err=1 no estado S_WAIT_ACK,
     // err_count deve incrementar em 1 no ciclo seguinte.
-    // Dica: use $past() para comparar com o valor anterior.
-    //
-    // R4_err_count: assert property (@(posedge clk) ... );
+    R4_err_count: assert property (@(posedge clk)
+        (dut.state == dut.S_WAIT_ACK && mem_ack && mem_err)
+        |=> (err_count == $past(err_count) + 8'd1)
+    );
 
 endmodule
