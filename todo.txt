@@ -1,0 +1,3 @@
+[ ] Adicionar assets/t1_assertions_abc_prove.png (print do Jasper com A1-A3 prove) e corrigir referencia no Entrega.md
+[ ] Adicionar assets/t2_assertions_b_prove.png (print do Jasper com B1-B4 prove) e corrigir referencia no Entrega.md
+[ ] Regenerar entrega.pdf apos corrigir os pontos acima

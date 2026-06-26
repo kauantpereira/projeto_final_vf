@@ -350,7 +350,7 @@ R4_err_count: assert property (@(posedge clk)
 
 *Coverage depois — visão detalhada.*
 
-**Formal Branch Coverage esperado: > 90%**
+**Formal Branch Coverage: 94,81%**
 
 As assertions R1–R4 introduzem antecedentes que forçam o verificador a explorar exatamente os branches que antes ficavam descobertos: o bloco `S_WAIT_ACK` com `mem_ack`, a captura de `txn_rdata` e o estado `S_ERROR`. Com isso, o coverage sobe significativamente em relação ao baseline de 79,75%.
 
