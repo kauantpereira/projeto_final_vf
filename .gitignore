@@ -1,0 +1,8 @@
+# macOS
+.DS_Store
+
+# JasperGold project output
+jgproject/
+
+# Source documents
+prints.docx
