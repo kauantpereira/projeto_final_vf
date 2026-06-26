@@ -139,8 +139,6 @@ S_RESP     → S_IDLE
 S_ERROR    → S_RESP
 ```
 
-> **[INSERIR DIAGRAMA DO GRAFO DE TRANSIÇÃO DA FSM]**
-
 *Desenho do grafo de transição da FSM corrigida.*
 
 ```mermaid
