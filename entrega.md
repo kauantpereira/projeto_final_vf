@@ -1,5 +1,9 @@
 # Entrega do Projeto Final — Verificação Formal
 
+**Alunos:**
+- Clarice Oliveira Minobolli Teixeira — 2023087761
+- Kauan Teixeira Pereira — 2023087770
+
 ## Tarefa 1: Depuração e Correção de Bugs no RTL
 
 ### Bug 1 — A1: `req_ready` não caía imediatamente ao encher a FIFO
@@ -54,7 +58,7 @@ Isso inverte o bit, favorecendo a outra porta na próxima arbitração.
 
 ### Print — Assertions A1, A2 e A3 como `prove`
 
-![t1_assertions_abc_prove](assets/t1_assertions_abc_prove)
+![t1_assertions_abc_prove](assets/t1_assertions_abc_prove.png)
 
 *Mostrando todos os testes A passando.*
 
@@ -114,7 +118,7 @@ Enquanto `a_resp_ready` não for afirmado, `a_resp_valid` deve permanecer ativo.
 
 ### Print — Assertions B1–B4 como `prove`
 
-![t2_assertions_b_prove](assets/t2_assertions_b_prove)
+![t2_assertions_b_prove](assets/t2_assertions_b_prove.png)
 
 *Mostrando todos os testes B passando.*
 
@@ -338,6 +342,12 @@ R4_err_count: assert property (@(posedge clk)
 );
 ```
 
+### Print — Assertions R1–R4 como `prove`
+
+![t4_assertions_r_prove](assets/t4_assertions_r_prove.png)
+
+*Mostrando todos os testes R passando.*
+
 ---
 
 ### Coverage depois das assertions R1–R4
@@ -368,3 +378,11 @@ Uma linha de RTL que não é coberta por nenhuma assertion significa que nenhuma
 - o design poderia ter um **caminho de dados incorreto** que só se manifestaria em uso real, escapando completamente da verificação formal.
 
 O coverage formal funciona como uma métrica de confiança: quanto maior a cobertura, menor a superfície de comportamento não verificado. Linhas permanentemente `uncovered` devem ser examinadas — ou são dead code (e devem ser removidas do RTL), ou falta uma assertion que as cubra.
+
+---
+
+### Visão geral — Todas as assertions A, B e R como `prove`
+
+![t4_all_assertions_prove](assets/t4_all_assertions_prove.png)
+
+*Property Table completa com A1–A3, B1–B4 e R1–R4 — todas as 11 assertions provadas.*

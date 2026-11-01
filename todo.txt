@@ -1,3 +1,7 @@
-[ ] Adicionar assets/t1_assertions_abc_prove.png (print do Jasper com A1-A3 prove) e corrigir referencia no Entrega.md
-[ ] Adicionar assets/t2_assertions_b_prove.png (print do Jasper com B1-B4 prove) e corrigir referencia no Entrega.md
-[ ] Regenerar entrega.pdf apos corrigir os pontos acima
+[x] Adicionar assets/t1_assertions_abc_prove.png (print do Jasper com A1-A3 prove) e corrigir referencia no Entrega.md
+[x] Adicionar assets/t2_assertions_b_prove.png (print do Jasper com B1-B4 prove) e corrigir referencia no Entrega.md
+[x] Adicionar assets/t4_assertions_r_prove.png (print do Jasper com R1-R4 prove) no Entrega.md
+[x] Adicionar assets/t4_all_assertions_prove.png (print geral A+B+R prove) ao fim da Tarefa 4 no Entrega.md
+[x] Verificar os nomes (nome do aluno, RA) que estao no Entrega.md
+[x] Regenerar entrega.pdf apos verificar e corrigir os pontos acima
+[x] Criar zip com apenas os arquivos pedidos no formato projeto_final_<RA>.zip (rtl/, verif/, grafo_aluno.tcl, relatorio.pdf)
